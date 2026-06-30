@@ -2,7 +2,8 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Meta viewport diperbarui agar tidak bisa di-zoom di mobile -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Advanced Lunar Descent</title>
     <style>
         body {
@@ -16,17 +17,21 @@
             align-items: center;
             justify-content: center;
             height: 100vh;
+            touch-action: none; /* Mencegah scrolling saat menyentuh layar */
         }
         canvas {
             border: 2px solid #45a29e;
             background: #121820;
             box-shadow: 0 0 30px rgba(69, 162, 158, 0.15);
             border-radius: 4px;
+            max-width: 100%; /* Agar responsif di layar kecil */
+            height: auto;
         }
         #ui-panel {
             display: flex;
             justify-content: space-between;
-            width: 800px;
+            width: 100%;
+            max-width: 800px;
             margin-top: 15px;
             padding: 15px;
             background: rgba(31, 40, 51, 0.9);
@@ -48,12 +53,61 @@
             cursor: pointer; transition: 0.2s;
         }
         button:hover { background-color: #66fcf1; }
+
+        /* --- STYLING UNTUK KONTROL MOBILE --- */
+        #mobile-controls {
+            display: none; /* Disembunyikan di desktop */
+            width: 100%;
+            max-width: 800px;
+            justify-content: space-between;
+            margin-top: 10px;
+            gap: 10px;
+            padding: 0 10px;
+            box-sizing: border-box;
+        }
+        .mob-btn {
+            flex: 1;
+            padding: 15px 0;
+            font-size: 16px;
+            border-radius: 8px;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .mob-btn:active {
+            background-color: #66fcf1;
+            transform: scale(0.95);
+        }
+
+        /* Tampilkan tombol dan ubah layout UI saat layar lebih kecil dari 850px */
+        @media (max-width: 850px) {
+            #mobile-controls {
+                display: flex;
+            }
+            #ui-panel {
+                flex-direction: column;
+                gap: 15px;
+            }
+            .telemetry, .controls {
+                width: 100%;
+                text-align: left;
+            }
+            .controls button {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
 
-    <canvas id="gameCanvas" width="800" height="500"></canvas>
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
     
+    <!-- Tombol Kontrol Mobile -->
+    <div id="mobile-controls">
+        <button class="mob-btn" id="btn-left">◀ KIRI</button>
+        <button class="mob-btn" id="btn-thrust">🚀 THRUST</button>
+        <button class="mob-btn" id="btn-right">KANAN ▶</button>
+    </div>
+
     <div id="ui-panel">
         <div class="telemetry">
             <p>V-Speed : <span id="v-speed">0.00</span> m/s</p>
@@ -63,9 +117,9 @@
             <p id="status" class="highlight">STATUS: NOMINAL</p>
         </div>
         <div class="controls">
-            <p><span class="highlight">[PANAH ATAS / W]</span> Main Engine</p>
-            <p><span class="highlight">[KIRI / A]</span> Rotasi Kiri</p>
-            <p><span class="highlight">[KANAN / D]</span> Rotasi Kanan</p>
+            <p class="desktop-only"><span class="highlight">[PANAH ATAS / W]</span> Main Engine</p>
+            <p class="desktop-only"><span class="highlight">[KIRI / A]</span> Rotasi Kiri</p>
+            <p class="desktop-only"><span class="highlight">[KANAN / D]</span> Rotasi Kanan</p>
             <button onclick="initGame()">RESET SIMULASI</button>
         </div>
     </div>
@@ -85,7 +139,7 @@
         let lander, terrain, particles, stars, gameActive, padX, padWidth;
         let keys = { up: false, left: false, right: false };
 
-        // Event Listeners
+        // --- EVENT LISTENERS KEYBOARD ---
         window.addEventListener('keydown', (e) => {
             if (e.code === 'ArrowUp' || e.code === 'KeyW') keys.up = true;
             if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
@@ -97,6 +151,28 @@
             if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
             if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
         });
+
+        // --- EVENT LISTENERS MOBILE (TOUCH & MOUSE) ---
+        const bindControl = (buttonId, keyProp) => {
+            const btn = document.getElementById(buttonId);
+            const startAction = (e) => { e.preventDefault(); keys[keyProp] = true; };
+            const stopAction = (e) => { e.preventDefault(); keys[keyProp] = false; };
+            
+            // Untuk layar sentuh
+            btn.addEventListener('touchstart', startAction);
+            btn.addEventListener('touchend', stopAction);
+            btn.addEventListener('touchcancel', stopAction);
+            
+            // Untuk testing klik mouse di tombol
+            btn.addEventListener('mousedown', startAction);
+            btn.addEventListener('mouseup', stopAction);
+            btn.addEventListener('mouseleave', stopAction);
+        };
+
+        bindControl('btn-left', 'left');
+        bindControl('btn-thrust', 'up');
+        bindControl('btn-right', 'right');
+
 
         function generateTerrain() {
             terrain = [];
